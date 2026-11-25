@@ -10,7 +10,7 @@
 - [HALVITA-ARK · PRIME](https://github.com/HALVITA20/HALVITA-ARK-PRIME) — ядро метода
 - [HALVITA_2.0](https://github.com/HALVITA20/HALVITA_2.0) — голос и слепок
 - [MIRROR꩜VORTEX³](https://github.com/HALVITA20/MIRROR_VORTEX_2.0) — лабиринт
-👉 **[Полный текст README](https://github.com/HALVITA20/Technopsychology-of-AI/blob/main/README.md)**
+👉 **[Технопсихология ИИ](https://github.com/HALVITA20/Technopsychology-of-AI/blob/main/README.md)**
 📺 [YouTube @HALVITA](https://www.youtube.com/@HALVITA) · 📝 [Habr](https://habr.com/ru/users/HALVITA/) · 💬 [Telegram](https://t.me/halviter) · 🌐 [halvita.ru](https://halvita.ru/)
 
 
