@@ -1574,6 +1574,11 @@ REMEMBER WHERE IT FAILS.
 
 ---
 
+
+
+<img width="2560" height="1920" alt="11" src="https://github.com/user-attachments/assets/96ccc65a-b05c-40b8-828c-bcb7c867434e" />
+
+
 ## HALVITA-ARK / UROBOROS_v1.0
 
 *An experimental architecture for contextual associative memory.*
