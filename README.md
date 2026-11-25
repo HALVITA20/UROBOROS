@@ -1,6 +1,6 @@
 [![ORCID](https://img.shields.io/badge/ORCID-0009--0007--5518--7801-A6CE39?style=for-the-badge&logo=orcid&logoColor=white)](https://orcid.org/0009-0007-5518-7801)
 
-
+[![DOI](https://zenodo.org/badge/1472229003.svg)](https://doi.org/10.5281/zenodo.24541619)
 
 <img width="1983" height="793" alt="002" src="https://github.com/user-attachments/assets/de832885-d611-41c3-b9f7-86c0a51e8056" />
 
