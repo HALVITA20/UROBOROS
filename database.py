@@ -117,15 +117,36 @@ class UroborosDatabase:
             created_at=row["created_at"],
         )
 
-    def list_traces(self, limit: int = 100) -> list[TraceRecord]:
-        if limit < 1:
-            raise ValueError("limit must be positive")
+    def list_traces(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[TraceRecord]:
+        """
+        Return traces in deterministic newest-first order.
+
+        Offset enables callers to retrieve the database in pages.
+        """
+
+        if (
+            isinstance(limit, bool)
+            or not isinstance(limit, int)
+            or limit < 1
+        ):
+            raise ValueError("limit must be a positive integer")
+
+        if (
+            isinstance(offset, bool)
+            or not isinstance(offset, int)
+            or offset < 0
+        ):
+            raise ValueError("offset must be a non-negative integer")
 
         rows = self.connection.execute("""
             SELECT * FROM traces
-            ORDER BY created_at DESC
-            LIMIT ?
-        """, (limit,)).fetchall()
+            ORDER BY created_at DESC, trace_id DESC
+            LIMIT ? OFFSET ?
+        """, (limit, offset)).fetchall()
 
         return [
             TraceRecord(
@@ -177,13 +198,17 @@ class UroborosDatabase:
         association_id: str,
         limit: int = 1000,
     ) -> list[EvidenceRecord]:
-        if limit < 1:
-            raise ValueError("limit must be positive")
+        if (
+            isinstance(limit, bool)
+            or not isinstance(limit, int)
+            or limit < 1
+        ):
+            raise ValueError("limit must be a positive integer")
 
         rows = self.connection.execute("""
             SELECT * FROM evidence
             WHERE association_id = ?
-            ORDER BY created_at ASC
+            ORDER BY created_at ASC, evidence_id ASC
             LIMIT ?
         """, (association_id, limit)).fetchall()
 
