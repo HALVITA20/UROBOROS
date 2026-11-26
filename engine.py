@@ -1,6 +1,7 @@
 
 from __future__ import annotations
 
+import heapq
 import math
 from collections.abc import Sequence
 
@@ -44,6 +45,8 @@ class UroborosEngine:
     Coordinates memory, evidence validation, contextual
     similarity, boundary evaluation, probing and conflicts.
     """
+
+    TRACE_PAGE_SIZE = 500
 
     def __init__(
         self,
@@ -113,10 +116,11 @@ class UroborosEngine:
         limit: int = 10,
     ) -> list[tuple[TraceRecord, float]]:
         """
-        Retrieve traces ranked by contextual similarity.
+        Search the entire trace database in fixed-size pages.
 
-        Searches the most recent 10,000 traces by default.
-        This is a bounded search, not a full-database search.
+        Only the best `limit` results are retained in memory.
+        Results are ordered by descending similarity weight,
+        with trace_id as a deterministic tie-breaker.
         """
 
         if not isinstance(context, Context):
@@ -128,30 +132,54 @@ class UroborosEngine:
         if limit < 1:
             raise ValueError("limit must be positive")
 
-        ranked = []
+        best: list[tuple[float, str, TraceRecord]] = []
+        offset = 0
 
-        for trace in self.database.list_traces(limit=10000):
-            distance = context_distance(
-                context,
-                trace.context,
+        while True:
+            page = self.database.list_traces(
+                limit=self.TRACE_PAGE_SIZE,
+                offset=offset,
             )
 
-            if distance is None:
-                continue
+            if not page:
+                break
 
-            weight = gaussian_weight(
-                distance,
-                self.bandwidth,
-            )
+            for trace in page:
+                distance = context_distance(
+                    context,
+                    trace.context,
+                )
 
-            ranked.append((trace, weight))
+                if distance is None:
+                    continue
 
-        ranked.sort(
-            key=lambda item: item[1],
+                weight = gaussian_weight(
+                    distance,
+                    self.bandwidth,
+                )
+
+                candidate = (
+                    weight,
+                    trace.trace_id,
+                    trace,
+                )
+
+                if len(best) < limit:
+                    heapq.heappush(best, candidate)
+                elif candidate[:2] > best[0][:2]:
+                    heapq.heapreplace(best, candidate)
+
+            offset += len(page)
+
+        best.sort(
+            key=lambda item: (item[0], item[1]),
             reverse=True,
         )
 
-        return ranked[:limit]
+        return [
+            (trace, weight)
+            for weight, _, trace in best
+        ]
 
     def observe(
         self,
@@ -198,6 +226,12 @@ class UroborosEngine:
             raise ValueError(
                 "current_context must be a Context instance"
             )
+
+        if (
+            isinstance(predictions, (str, bytes))
+            or not isinstance(predictions, Sequence)
+        ):
+            raise ValueError("predictions must be a sequence")
 
         records = self.database.list_evidence(association_id)
 
