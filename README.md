@@ -1,6 +1,6 @@
 [![ORCID](https://img.shields.io/badge/ORCID-0009--0007--5518--7801-A6CE39?style=for-the-badge&logo=orcid&logoColor=white)](https://orcid.org/0009-0007-5518-7801)
 
-[![DOI](https://zenodo.org/badge/1472229003.svg)](https://doi.org/10.5281/zenodo.24541619)
+[![UROBOROS 2.0 — DOI](https://img.shields.io/badge/DOI-UROBOROS%202.0-blue?style=for-the-badge&logo=zenodo)](https://doi.org/10.5281/zenodo.24556649)
 
 <img width="1672" height="941" alt="уро" src="https://github.com/user-attachments/assets/0d5227df-94ef-4450-a11a-bc9b955ef213" />
 
