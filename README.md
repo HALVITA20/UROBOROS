@@ -2534,3 +2534,899 @@ UROBOROS 2.0 находится в стадии архитектурного р�
 `CLAIM → IMPLEMENT → TEST → COMPARE → REPRODUCE`
 
 
+
+
+
+
+
+
+
+UROBOROS 2.0 — COMPLETE WORKING PROTOTYPE
+Contextual Associative Memory & Boundary Learning Engine
+Автор: Хальвита Евгений Александрович (HALVITA)
+Версия документа: 2.0 CORE REPAIR / modular prototype
+Статус: экспериментальный программный прототип; не production-ready система.
+Ключевой принцип: ASSOCIATION ≠ CONTEXTUAL APPLICABILITY
+
+Наличие связи между двумя событиями или понятиями не означает, что эта связь применима в любом контексте. UROBOROS разделяет сохранённый след, текущую интерпретацию и границу применимости, чтобы не превращать ассоциацию в безусловное утверждение.
+
+Содержание
+1. Назначение и границы прототипа
+2. Архитектура
+3. Математическая модель
+4. Правила доказательств и границ
+5. Структура проекта
+6. Установка и запуск
+7. Минимальный пример использования
+8. Полный исходный код
+9. Полный набор тестов
+10. Ограничения и следующие этапы
+11. Воспроизводимость и научная осторожность
+12. Лицензия
+1. Назначение и границы прототипа
+UROBOROS 2.0 — модульный экспериментальный слой контекстной ассоциативной памяти. Его задача — хранить эпизоды и связи, проверять качество поступающих свидетельств, оценивать локальную поддержку ассоциации в заданном контексте и выдавать консервативное состояние применимости.
+
+Прототип реализует:
+- SQLite-хранилище;
+- четыре логических слоя памяти: TRACE, ASSOCIATIVE, POTENTIAL, BOUNDARY;
+- неизменяемые исходные следы (защита от UPDATE и DELETE на уровне SQLite-триггеров);
+- проверку свидетельств POSITIVE, NEGATIVE, INCONCLUSIVE;
+- сравнение контекстов с учётом наблюдаемости признаков;
+- локальный effective sample size (local ESS);
+- эмпирические квантильные границы ансамблевых оценок;
+- три исхода границы: B+, B-, B?;
+- сохранение конфликтующих ветвей без переписывания истории;
+- выбор контекста для дополнительной проверки с логированием propensity.
+Принципиально: это не новая языковая модель, не самостоятельный обученный ансамбль и не доказательство сознания ИИ. Это программный каркас для последующих контролируемых экспериментов.
+2. Архитектура
+UROBOROS 2.0
+│
+├── TRACE MEMORY       неизменяемые исходные эпизоды и происхождение
+├── ASSOCIATIVE MEMORY граф связей между эпизодами/понятиями
+├── POTENTIAL MEMORY   гипотезы и кандидаты, требующие проверки
+└── BOUNDARY MEMORY    результаты проверки применимости в контексте
+
+Evidence Gate → Context Kernel → Local ESS → Ensemble Bounds → B+/B-/B?
+                         │
+                         └── Active Context Probing
+
+Conflict handling: DETECT → PRESERVE → VERIFY → REASSESS → DISCLOSE → CONTINUE
+Критическое разделение состояний:
+- M — сохранённая память/исходный след;
+- I — текущая интерпретация;
+- B — статус границы применимости и уверенности.
+M_t ≠ I_t ≠ B_t. Обновление интерпретации не должно переписывать исходный след: UPDATE INTERPRETATION ≠ REWRITE HISTORY.
+3. Математическая модель
+3.1 Контекстное ядро
+Для запроса в контексте C и наблюдения C_n используется гауссово ядро:
+
+\(a_n(C)=\exp\left(-\frac{d(C,C_n)^2}{2h^2}\right)\)
+
+d(C,C_n) вычисляется только по сопоставимым наблюдаемым признакам. Отсутствующий признак не считается нулём. Если сопоставимых признаков недостаточно, расстояние считается неизвестным.
+3.2 Локальный эффективный размер выборки
+\(N_{eff}(C)=\frac{(\sum_n a_n(C))^2}{\sum_n a_n(C)^2}\)
+
+ESS рассчитывается локально относительно контекста запроса, а не глобально для всей пары. Однако ESS инвариантен к общему масштабу весов: он может выглядеть большим, даже если все наблюдения очень далеки от запроса. Поэтому реализация дополнительно проверяет абсолютную сумму локальных весов (local kernel mass).
+3.3 Ансамблевые квантильные границы
+Для набора оценок ансамбля p_k(C):
+
+\(L_\alpha(C)=Q_\alpha(\{p_k(C)\}),\quad U_\alpha(C)=Q_{1-\alpha}(\{p_k(C)\})\)
+
+Это эмпирические квантили переданного набора оценок, а не статистические доверительные интервалы. Сам прототип не обучает ансамбль и не создаёт независимое разнообразие моделей.
+3.4 Состояния границы
+- B+ — нижняя квантиль не ниже положительного порога, а локальная поддержка достаточна. Это подтверждение применимости только в исследованной области.
+- B- — верхняя квантиль не выше отрицательного порога, а локальная поддержка достаточна. Это отсутствие проявления в исследованной области, а не доказательство универсального несуществования.
+- B? — недостаточно локальных данных, недостаточная масса весов, конфликт оценок или недостаточное перекрытие признаков.
+3.5 Активное зондирование контекста
+Политика выбора кандидата контекста использует оценку вида:
+
+\(S(C)=IG(C)+\alpha T(C)-\lambda K(C)-\mu R(C)\)
+
+Для стохастического выбора применяется softmax:
+
+\(P(C_i\mid D)=\frac{\exp(S(C_i)/T)}{\sum_j\exp(S(C_j)/T)}\)
+
+В журнале сохраняются вероятности выбора (propensity), оценки кандидатов и версия политики. Сам по себе этот механизм не является полной причинно-экспериментальной системой.
+4. Правила доказательств и граничных решений
+1. POSITIVE допустимо только при outcome=True.
+2. NEGATIVE допустимо только при outcome=False.
+3. INCONCLUSIVE допустимо только при outcome=None и valid=False; такие записи не обучают границу.
+4. Переданное вызывающим кодом valid=True само по себе не делает свидетельство валидным.
+5. Проверяются происхождение, факт наблюдения, согласованность типа и исхода, диапазон качества и минимальный порог качества.
+6. Значения качества вне диапазона отклоняются, а не автоматически обрезаются.
+7. Оценка, сгенерированная самой LLM, является model_estimate, а не независимым свидетельством.
+8. Семейство источников помогает анализировать происхождение и дублирование, но не доказывает статистическую независимость.
+9. Конфликтующие результаты сохраняются как отдельные ветви. Неопределённость не маскируется молчанием.
+5. Структура проекта
+UROBOROS_2.0/
+├── README.md
+├── DISCLAIMER.md
+├── pyproject.toml
+├── uroboros/
+│   ├── __init__.py
+│   ├── models.py
+│   ├── database.py
+│   ├── context.py
+│   ├── evidence.py
+│   ├── boundary.py
+│   ├── probing.py
+│   ├── conflicts.py
+│   └── engine.py
+└── tests/
+    ├── test_context.py
+    ├── test_boundary.py
+    ├── test_evidence.py
+    ├── test_database_engine.py
+    └── test_probing.py
+6. Установка и запуск
+Требуется Python 3.11 или новее. В корне проекта выполните:
+python -m venv .venv
+
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+
+# Windows CMD
+.venv\Scripts\activate.bat
+
+# macOS / Linux
+source .venv/bin/activate
+
+pip install -e ".[dev]"
+pytest
+Тесты проверяют реализованные программные инварианты. Успешный прогон тестов не доказывает научную валидность, калибровку или превосходство метода.
+7. Минимальный пример использования
+from uroboros import UroborosEngine, EvidenceInput, Context
+
+engine = UroborosEngine(":memory:")
+engine.add_trace(
+    "The alarm sounded in the server room.",
+    {"site": "A", "shift": "night"},
+)
+
+result = engine.record_evidence(EvidenceInput(
+    association_id="alarm->evacuation",
+    context=Context({"site": "A", "shift": "night"}),
+    kind="POSITIVE",
+    outcome=True,
+    quality=0.9,
+    source="operator-log-001",
+    source_family="facility-log",
+    observed=True,
+))
+
+print(result)
+8. Полный исходный код
+Ниже приведено содержимое всех исходных файлов прототипа. Имена файлов сохранены как заголовки; каждый блок можно извлечь в соответствующий путь проекта.
+pyproject.toml — Project configuration
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uroboros-memory"
+version = "0.2.0"
+description = "Experimental contextual associative memory and boundary-learning engine"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "HALVITA"}]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["uroboros*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+DISCLAIMER.md — Research and safety disclaimer
+# Disclaimer
+
+UROBOROS is an experimental software architecture for contextual associative memory and boundary learning.
+
+It is not a claim that an LLM is conscious, sentient, biologically equivalent to a brain, or capable of subjective experience. It does not guarantee truth, correctness, safety, or reliable autonomous behavior. It is not a medical, therapeutic, or decision-making product.
+
+The current repository is a modular research scaffold. Implemented code and passing unit tests demonstrate only the tested software properties. They do not establish scientific validity, generalization, calibration, or superiority over existing methods. Independent evaluation and controlled experiments remain necessary.
+uroboros/__init__.py — Public package interface
+from .engine import UroborosEngine
+from .models import (
+    Context, EvidenceInput, EvidenceKind, EvidenceRecord, BoundaryResult,
+    BoundaryState, ProbeCandidate, ProbeDecision, TraceRecord,
+)
+__all__ = [
+    "UroborosEngine", "Context", "EvidenceInput", "EvidenceKind",
+    "EvidenceRecord", "BoundaryResult", "BoundaryState", "ProbeCandidate",
+    "ProbeDecision", "TraceRecord", "PotentialAssociation",
+]
+uroboros/models.py — Domain models and typed records
+from __future__ import annotations
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Mapping
+import time
+import uuid
+
+
+class EvidenceKind(str, Enum):
+    POSITIVE = "POSITIVE"
+    NEGATIVE = "NEGATIVE"
+    INCONCLUSIVE = "INCONCLUSIVE"
+
+
+class BoundaryState(str, Enum):
+    POSITIVE = "B+"
+    NEGATIVE = "B-"
+    UNKNOWN = "B?"
+
+
+@dataclass(frozen=True)
+class Context:
+    features: Mapping[str, Any]
+    observed: frozenset[str] | None = None
+
+    def observed_features(self) -> frozenset[str]:
+        if self.observed is not None:
+            return self.observed.intersection(self.features.keys())
+        return frozenset(k for k, v in self.features.items() if v is not None)
+
+
+@dataclass(frozen=True)
+class TraceRecord:
+    trace_id: str
+    content: str
+    context: Context
+    source: str
+    created_at: float = field(default_factory=time.time)
+
+
+@dataclass(frozen=True)
+class EvidenceInput:
+    association_id: str
+    context: Context
+    kind: EvidenceKind
+    outcome: bool | None
+    quality: float
+    source: str
+    source_family: str | None = None
+    observed: bool = True
+    retrieval_succeeded: bool = True
+    context_complete: bool = True
+    valid: bool | None = None  # advisory only; never overrides the validation gate
+
+
+@dataclass(frozen=True)
+class EvidenceRecord:
+    evidence_id: str
+    association_id: str
+    context: Context
+    kind: EvidenceKind
+    outcome: bool | None
+    quality: float
+    source: str
+    source_family: str | None
+    created_at: float = field(default_factory=time.time)
+
+
+@dataclass(frozen=True)
+class BoundaryResult:
+    state: BoundaryState
+    lower_quantile: float | None
+    upper_quantile: float | None
+    local_ess: float
+    local_weight_sum: float
+    support_count: int
+    reason: str
+
+
+@dataclass(frozen=True)
+class PotentialAssociation:
+    association_id: str
+    source_trace_id: str
+    target_trace_id: str
+    score: float
+    status: str = "CANDIDATE"
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class ProbeCandidate:
+    context_id: str
+    information_gain: float
+    task_value: float
+    cost: float
+    risk: float
+
+
+@dataclass(frozen=True)
+class ProbeDecision:
+    context_id: str
+    score: float
+    propensity: float
+    policy_version: str
+    temperature: float
+
+
+def new_id() -> str:
+    return str(uuid.uuid4())
+uroboros/context.py — Context comparison and feature observability
+from __future__ import annotations
+import math
+from .models import Context
+
+
+def context_distance(a: Context, b: Context) -> float | None:
+    """RMS distance over comparable observed features.
+
+    Numeric features are scaled by max(1, |a|, |b|). Categorical values use
+    0/1 mismatch. Missing values are excluded, never imputed as zero.
+    Returns None if there is no comparable overlap.
+    """
+    a_obs, b_obs = a.observed_features(), b.observed_features()
+    common = sorted(a_obs.intersection(b_obs))
+    distances: list[float] = []
+    for key in common:
+        av, bv = a.features.get(key), b.features.get(key)
+        if av is None or bv is None:
+            continue
+        if isinstance(av, (int, float)) and not isinstance(av, bool) and isinstance(bv, (int, float)) and not isinstance(bv, bool):
+            scale = max(1.0, abs(float(av)), abs(float(bv)))
+            distances.append(abs(float(av) - float(bv)) / scale)
+        else:
+            distances.append(0.0 if av == bv else 1.0)
+    if not distances:
+        return None
+    return math.sqrt(sum(d * d for d in distances) / len(distances))
+
+
+def gaussian_weight(distance: float, bandwidth: float) -> float:
+    if bandwidth <= 0:
+        raise ValueError("bandwidth must be > 0")
+    return math.exp(-(distance ** 2) / (2.0 * bandwidth ** 2))
+uroboros/evidence.py — Evidence validation gate
+from __future__ import annotations
+from .models import EvidenceInput, EvidenceKind
+
+
+class EvidenceValidationError(ValueError):
+    pass
+
+
+def validate_evidence(item: EvidenceInput, min_quality: float = 0.5) -> None:
+    if not 0.0 <= item.quality <= 1.0:
+        raise EvidenceValidationError("quality must be within [0, 1]")
+    if item.quality < min_quality:
+        raise EvidenceValidationError("quality below configured minimum")
+    if not item.source.strip():
+        raise EvidenceValidationError("source provenance is required")
+    if not item.observed:
+        raise EvidenceValidationError("outcome was not directly observed")
+    if not item.retrieval_succeeded:
+        raise EvidenceValidationError("retrieval/observation process failed")
+    if not item.context_complete:
+        raise EvidenceValidationError("context is incomplete")
+    if item.kind is EvidenceKind.POSITIVE and item.outcome is not True:
+        raise EvidenceValidationError("POSITIVE evidence requires outcome=True")
+    if item.kind is EvidenceKind.NEGATIVE and item.outcome is not False:
+        raise EvidenceValidationError("NEGATIVE evidence requires outcome=False")
+    if item.kind is EvidenceKind.INCONCLUSIVE:
+        if item.outcome is not None:
+            raise EvidenceValidationError("INCONCLUSIVE evidence requires outcome=None")
+        if item.valid is True:
+            raise EvidenceValidationError("INCONCLUSIVE evidence cannot be marked valid")
+    # Caller-provided valid=True is deliberately not sufficient to pass this gate.
+uroboros/boundary.py — Local support, ESS, ensemble quantiles, boundary decision
+from __future__ import annotations
+from collections.abc import Sequence
+from .context import context_distance, gaussian_weight
+from .models import Context, EvidenceRecord, EvidenceKind, BoundaryResult, BoundaryState
+
+
+def empirical_quantile(values: Sequence[float], q: float) -> float:
+    if not values:
+        raise ValueError("values cannot be empty")
+    if not 0.0 <= q <= 1.0:
+        raise ValueError("q must be within [0, 1]")
+    xs = sorted(float(v) for v in values)
+    if any(not 0.0 <= v <= 1.0 for v in xs):
+        raise ValueError("probabilities must be within [0, 1]")
+    # Linear interpolation, equivalent to the common Type-7 sample quantile.
+    h = (len(xs) - 1) * q
+    lo = int(h)
+    hi = min(lo + 1, len(xs) - 1)
+    frac = h - lo
+    return xs[lo] * (1.0 - frac) + xs[hi] * frac
+
+
+def local_effective_sample_size(weights: Sequence[float]) -> float:
+    positive = [float(w) for w in weights if w > 0.0]
+    if not positive:
+        return 0.0
+    numerator = sum(positive) ** 2
+    denominator = sum(w * w for w in positive)
+    return numerator / denominator if denominator else 0.0
+
+
+def evaluate_boundary(
+    query: Context,
+    evidence: Sequence[EvidenceRecord],
+    ensemble_probabilities: Sequence[float],
+    *,
+    bandwidth: float = 0.35,
+    alpha: float = 0.10,
+    positive_threshold: float = 0.80,
+    negative_threshold: float = 0.20,
+    min_local_ess: float = 3.0,
+    min_local_weight_sum: float = 1.0,
+) -> BoundaryResult:
+    if bandwidth <= 0:
+        raise ValueError("bandwidth must be > 0")
+    if not 0 < alpha < 0.5:
+        raise ValueError("alpha must be between 0 and 0.5")
+    if not 0 <= negative_threshold < positive_threshold <= 1:
+        raise ValueError("require 0 <= negative_threshold < positive_threshold <= 1")
+    if min_local_ess <= 0:
+        raise ValueError("min_local_ess must be > 0")
+    probs = list(ensemble_probabilities)
+    if not probs:
+        return BoundaryResult(BoundaryState.UNKNOWN, None, None, 0.0, 0.0, 0, "no ensemble predictions")
+    if any(not 0 <= p <= 1 for p in probs):
+        raise ValueError("ensemble probabilities must be within [0, 1]")
+
+    valid = [e for e in evidence if e.kind in (EvidenceKind.POSITIVE, EvidenceKind.NEGATIVE)]
+    weights = []
+    for item in valid:
+        distance = context_distance(query, item.context)
+        if distance is not None:
+            weights.append(gaussian_weight(distance, bandwidth))
+    ess = local_effective_sample_size(weights)
+    weight_sum = sum(weights)
+    lower = empirical_quantile(probs, alpha)
+    upper = empirical_quantile(probs, 1.0 - alpha)
+    # ESS alone is scale-invariant: many equally distant observations can have
+    # a high ESS despite negligible kernel support. Require both local ESS and
+    # absolute local kernel mass.
+    if ess < min_local_ess or weight_sum < min_local_weight_sum:
+        return BoundaryResult(BoundaryState.UNKNOWN, lower, upper, ess, weight_sum, len(weights),
+                              "insufficient local evidence support or kernel mass")
+    if lower >= positive_threshold:
+        return BoundaryResult(BoundaryState.POSITIVE, lower, upper, ess, weight_sum, len(weights),
+                              "lower empirical ensemble quantile exceeds positive threshold")
+    if upper <= negative_threshold:
+        return BoundaryResult(BoundaryState.NEGATIVE, lower, upper, ess, weight_sum, len(weights),
+                              "upper empirical ensemble quantile is below negative threshold")
+    return BoundaryResult(BoundaryState.UNKNOWN, lower, upper, ess, weight_sum, len(weights),
+                          "ensemble bounds do not establish a boundary")
+uroboros/database.py — SQLite persistence and immutable trace enforcement
+from __future__ import annotations
+import json
+import sqlite3
+from .models import Context, EvidenceRecord, EvidenceKind, TraceRecord, new_id
+
+
+SCHEMA = """
+PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS traces (
+  trace_id TEXT PRIMARY KEY, content TEXT NOT NULL, context_json TEXT NOT NULL,
+  source TEXT NOT NULL, created_at REAL NOT NULL
+);
+CREATE TRIGGER IF NOT EXISTS traces_no_update
+BEFORE UPDATE ON traces BEGIN SELECT RAISE(ABORT, 'trace records are immutable'); END;
+CREATE TRIGGER IF NOT EXISTS traces_no_delete
+BEFORE DELETE ON traces BEGIN SELECT RAISE(ABORT, 'trace records are immutable'); END;
+CREATE TABLE IF NOT EXISTS associations (
+  association_id TEXT PRIMARY KEY, created_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS potential_associations (
+  association_id TEXT PRIMARY KEY, source_trace_id TEXT NOT NULL,
+  target_trace_id TEXT NOT NULL, score REAL NOT NULL,
+  status TEXT NOT NULL, note TEXT NOT NULL, created_at REAL NOT NULL,
+  FOREIGN KEY(source_trace_id) REFERENCES traces(trace_id),
+  FOREIGN KEY(target_trace_id) REFERENCES traces(trace_id)
+);
+CREATE TABLE IF NOT EXISTS evidence (
+  evidence_id TEXT PRIMARY KEY, association_id TEXT NOT NULL,
+  context_json TEXT NOT NULL, kind TEXT NOT NULL, outcome INTEGER,
+  quality REAL NOT NULL, source TEXT NOT NULL, source_family TEXT,
+  created_at REAL NOT NULL,
+  FOREIGN KEY(association_id) REFERENCES associations(association_id)
+);
+CREATE TABLE IF NOT EXISTS conflict_branches (
+  branch_id TEXT PRIMARY KEY, subject_id TEXT NOT NULL,
+  interpretation TEXT NOT NULL, status TEXT NOT NULL,
+  source TEXT NOT NULL, created_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS probe_logs (
+  log_id TEXT PRIMARY KEY, context_id TEXT NOT NULL, score REAL NOT NULL,
+  propensity REAL NOT NULL, policy_version TEXT NOT NULL,
+  temperature REAL NOT NULL, candidate_set_json TEXT NOT NULL,
+  created_at REAL NOT NULL
+);
+"""
+
+
+class MemoryDB:
+    def __init__(self, path: str = "uroboros.sqlite3"):
+        self.conn = sqlite3.connect(path)
+        self.conn.row_factory = sqlite3.Row
+        self.conn.executescript(SCHEMA)
+
+    def close(self):
+        self.conn.close()
+
+    @staticmethod
+    def _context_json(context: Context) -> str:
+        return json.dumps({"features": dict(context.features),
+                           "observed": sorted(context.observed_features())}, sort_keys=True)
+
+    @staticmethod
+    def _context_from_json(payload: str) -> Context:
+        data = json.loads(payload)
+        if isinstance(data, dict) and "features" in data:
+            return Context(data["features"], frozenset(data.get("observed", [])))
+        return Context(data)  # backward compatibility with early scaffold files
+
+    def add_trace(self, trace: TraceRecord) -> None:
+        self.conn.execute(
+            "INSERT INTO traces VALUES (?, ?, ?, ?, ?)",
+            (trace.trace_id, trace.content, self._context_json(trace.context),
+             trace.source, trace.created_at))
+        self.conn.commit()
+
+    def ensure_association(self, association_id: str, created_at: float) -> None:
+        self.conn.execute("INSERT OR IGNORE INTO associations VALUES (?, ?)", (association_id, created_at))
+        self.conn.commit()
+
+    def add_evidence(self, item: EvidenceRecord) -> None:
+        self.ensure_association(item.association_id, item.created_at)
+        self.conn.execute(
+            "INSERT INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (item.evidence_id, item.association_id,
+             self._context_json(item.context),
+             item.kind.value, None if item.outcome is None else int(item.outcome),
+             item.quality, item.source, item.source_family, item.created_at))
+        self.conn.commit()
+
+    def get_evidence(self, association_id: str) -> list[EvidenceRecord]:
+        rows = self.conn.execute(
+            "SELECT * FROM evidence WHERE association_id=? ORDER BY created_at", (association_id,)
+        ).fetchall()
+        return [EvidenceRecord(
+            evidence_id=r["evidence_id"], association_id=r["association_id"],
+            context=self._context_from_json(r["context_json"]), kind=EvidenceKind(r["kind"]),
+            outcome=None if r["outcome"] is None else bool(r["outcome"]),
+            quality=r["quality"], source=r["source"], source_family=r["source_family"],
+            created_at=r["created_at"]) for r in rows]
+
+
+    def add_potential_association(self, item) -> None:
+        if not 0.0 <= item.score <= 1.0:
+            raise ValueError("potential association score must be within [0, 1]")
+        self.conn.execute(
+            "INSERT INTO potential_associations VALUES (?, ?, ?, ?, ?, ?, strftime('%s','now'))",
+            (item.association_id, item.source_trace_id, item.target_trace_id,
+             item.score, item.status, item.note))
+        self.conn.commit()
+
+    def list_potential_associations(self):
+        return self.conn.execute(
+            "SELECT * FROM potential_associations ORDER BY created_at DESC"
+        ).fetchall()
+
+    def add_conflict_branch(self, subject_id: str, interpretation: str, source: str, status: str = "OPEN") -> str:
+        branch_id = new_id()
+        self.conn.execute(
+            "INSERT INTO conflict_branches VALUES (?, ?, ?, ?, ?, strftime('%s','now'))",
+            (branch_id, subject_id, interpretation, status, source))
+        self.conn.commit()
+        return branch_id
+
+    def list_conflict_branches(self, subject_id: str):
+        return self.conn.execute(
+            "SELECT * FROM conflict_branches WHERE subject_id=? ORDER BY created_at",
+            (subject_id,)).fetchall()
+
+    def log_probe(self, decision, candidate_set) -> None:
+        self.conn.execute(
+            "INSERT INTO probe_logs VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s','now'))",
+            (new_id(), decision.context_id, decision.score, decision.propensity,
+             decision.policy_version, decision.temperature, json.dumps(candidate_set, sort_keys=True)))
+        self.conn.commit()
+uroboros/probing.py — Active context probing and propensity logging
+from __future__ import annotations
+import math
+import random
+from .models import ProbeCandidate, ProbeDecision
+
+
+def choose_context(
+    candidates: list[ProbeCandidate], *, alpha: float = 1.0, cost_weight: float = 1.0,
+    risk_weight: float = 1.0, temperature: float = 0.25,
+    policy_version: str = "softmax-v1", rng: random.Random | None = None,
+) -> tuple[ProbeDecision, list[dict]]:
+    if not candidates:
+        raise ValueError("at least one allowed candidate is required")
+    if temperature <= 0:
+        raise ValueError("temperature must be > 0")
+    for c in candidates:
+        if min(c.information_gain, c.task_value, c.cost, c.risk) < 0:
+            raise ValueError("candidate values must be non-negative")
+    # Scores use a documented linear utility; callers must normalize inputs
+    # consistently and log the candidate set and policy version.
+    scores = {
+        c.context_id: c.information_gain + alpha * c.task_value
+        - cost_weight * c.cost - risk_weight * c.risk
+        for c in candidates
+    }
+    max_score = max(scores.values())
+    exps = {k: math.exp((v - max_score) / temperature) for k, v in scores.items()}
+    total = sum(exps.values())
+    probs = {k: v / total for k, v in exps.items()}
+    chooser = rng or random.Random()
+    ids = list(probs)
+    chosen = chooser.choices(ids, weights=[probs[i] for i in ids], k=1)[0]
+    decision = ProbeDecision(chosen, scores[chosen], probs[chosen], policy_version, temperature)
+    log = [{"context_id": c.context_id, "score": scores[c.context_id],
+            "propensity": probs[c.context_id]} for c in candidates]
+    return decision, log
+uroboros/conflicts.py — Honest Conflict Resolution (HCR)
+from __future__ import annotations
+from .database import MemoryDB
+
+
+class HonestConflictResolution:
+    """HCR: detect, preserve, verify, reassess, disclose, continue."""
+    def __init__(self, db: MemoryDB):
+        self.db = db
+
+    def preserve(self, subject_id: str, interpretations: list[tuple[str, str]]) -> list[str]:
+        if not interpretations:
+            raise ValueError("at least one interpretation is required")
+        # Append-only: competing interpretations are never silently overwritten.
+        return [self.db.add_conflict_branch(subject_id, text, source, "OPEN")
+                for text, source in interpretations]
+
+    def branches(self, subject_id: str):
+        return self.db.list_conflict_branches(subject_id)
+uroboros/engine.py — Main orchestration API
+from __future__ import annotations
+from .database import MemoryDB
+from .models import (
+    Context, EvidenceInput, EvidenceRecord, TraceRecord, PotentialAssociation, new_id
+)
+from .evidence import validate_evidence
+from .boundary import evaluate_boundary
+from .probing import choose_context
+from .conflicts import HonestConflictResolution
+
+
+class UroborosEngine:
+    def __init__(self, db_path: str = "uroboros.sqlite3", *, min_quality: float = 0.5):
+        self.db = MemoryDB(db_path)
+        self.min_quality = min_quality
+        self.hcr = HonestConflictResolution(self.db)
+
+    def close(self):
+        self.db.close()
+
+    def add_trace(self, content: str, context: dict, source: str = "user") -> TraceRecord:
+        if not content.strip() or not source.strip():
+            raise ValueError("content and source are required")
+        trace = TraceRecord(new_id(), content, Context(context), source)
+        self.db.add_trace(trace)
+        return trace
+
+    def add_potential_association(self, source_trace_id: str, target_trace_id: str,
+                                  score: float, note: str = "", status: str = "CANDIDATE"):
+        item = PotentialAssociation(new_id(), source_trace_id, target_trace_id, score, status, note)
+        self.db.add_potential_association(item)
+        return item
+
+    def record_evidence(self, item: EvidenceInput) -> EvidenceRecord:
+        validate_evidence(item, self.min_quality)
+        record = EvidenceRecord(
+            evidence_id=new_id(), association_id=item.association_id,
+            context=item.context, kind=item.kind, outcome=item.outcome,
+            quality=item.quality, source=item.source, source_family=item.source_family)
+        self.db.add_evidence(record)
+        return record
+
+    def evaluate(self, association_id: str, query_context: Context,
+                 ensemble_probabilities: list[float], **kwargs):
+        evidence = self.db.get_evidence(association_id)
+        return evaluate_boundary(query_context, evidence, ensemble_probabilities, **kwargs)
+
+    def select_probe(self, candidates, **kwargs):
+        decision, candidate_log = choose_context(candidates, **kwargs)
+        self.db.log_probe(decision, candidate_log)
+        return decision, candidate_log
+tests/test_context.py — Context tests
+from uroboros.context import context_distance, gaussian_weight
+from uroboros.models import Context
+
+
+def test_missing_values_are_not_zero():
+    assert context_distance(Context({"x": None}), Context({"x": 0})) is None
+
+
+def test_categorical_and_numeric_distance():
+    d = context_distance(Context({"n": 5, "kind": "a"}), Context({"n": 5, "kind": "b"}))
+    assert d == 2 ** -0.5
+
+
+def test_gaussian_weight():
+    assert gaussian_weight(0, 0.5) == 1.0
+tests/test_evidence.py — Evidence tests
+import pytest
+from uroboros.models import Context, EvidenceInput, EvidenceKind
+from uroboros.evidence import validate_evidence, EvidenceValidationError
+
+
+def item(**kw):
+    data = dict(association_id="a", context=Context({"x": 1}),
+                kind=EvidenceKind.POSITIVE, outcome=True, quality=0.9,
+                source="log-1", observed=True, retrieval_succeeded=True,
+                context_complete=True)
+    data.update(kw)
+    return EvidenceInput(**data)
+
+
+def test_positive_evidence_passes():
+    validate_evidence(item())
+
+
+def test_caller_valid_flag_does_not_override_failed_observation():
+    with pytest.raises(EvidenceValidationError):
+        validate_evidence(item(observed=False, valid=True))
+
+
+def test_negative_requires_false_outcome():
+    with pytest.raises(EvidenceValidationError):
+        validate_evidence(item(kind=EvidenceKind.NEGATIVE, outcome=True))
+
+
+def test_inconclusive_is_not_training_evidence():
+    with pytest.raises(EvidenceValidationError):
+        validate_evidence(item(kind=EvidenceKind.INCONCLUSIVE, outcome=None, valid=True))
+
+
+def test_quality_is_rejected_not_clamped():
+    with pytest.raises(EvidenceValidationError):
+        validate_evidence(item(quality=1.2))
+tests/test_boundary.py — Boundary tests
+from uroboros.boundary import empirical_quantile, local_effective_sample_size, evaluate_boundary
+from uroboros.models import Context, EvidenceRecord, EvidenceKind, BoundaryState
+
+
+def ev(i, context, kind=EvidenceKind.POSITIVE):
+    return EvidenceRecord(str(i), "a", context, kind,
+                          True if kind is EvidenceKind.POSITIVE else False,
+                          0.9, f"src-{i}", "family")
+
+
+def test_local_ess_formula_and_locality():
+    assert local_effective_sample_size([1, 1, 1]) == 3
+    assert local_effective_sample_size([1, 0]) == 1
+
+
+def test_quantile_linear_interpolation():
+    assert empirical_quantile([0.0, 1.0], 0.25) == 0.25
+
+
+def test_boundary_positive_requires_local_support():
+    q = Context({"room": "A"})
+    evidence = [ev(i, q) for i in range(4)]
+    result = evaluate_boundary(q, evidence, [0.9] * 20, min_local_ess=3)
+    assert result.state is BoundaryState.POSITIVE
+    assert result.local_ess == 4
+
+
+def test_boundary_unknown_when_local_support_missing():
+    evidence = [ev(i, Context({"room": "B"})) for i in range(10)]
+    result = evaluate_boundary(Context({"room": "A"}), evidence, [0.95] * 20)
+    assert result.state is BoundaryState.UNKNOWN
+    # ESS is scale-invariant; the small absolute kernel mass is what rejects
+    # these uniformly distant observations.
+    assert result.local_ess == 10
+    assert result.local_weight_sum < 1.0
+
+
+def test_boundary_negative_means_studied_domain_only():
+    q = Context({"room": "A"})
+    evidence = [ev(i, q, EvidenceKind.NEGATIVE) for i in range(4)]
+    result = evaluate_boundary(q, evidence, [0.05] * 20, min_local_ess=3)
+    assert result.state is BoundaryState.NEGATIVE
+tests/test_database_engine.py — Database and engine tests
+import sqlite3
+import pytest
+from uroboros import UroborosEngine, Context, EvidenceInput, EvidenceKind
+
+
+def test_engine_persists_trace_and_evidence(tmp_path):
+    path = str(tmp_path / "memory.db")
+    engine = UroborosEngine(path)
+    engine.add_trace("episode", {"place": "A"})
+    engine.record_evidence(EvidenceInput(
+        "a", Context({"place": "A"}), EvidenceKind.POSITIVE, True,
+        0.9, "sensor-1", "sensor-family"))
+    assert len(engine.db.get_evidence("a")) == 1
+    engine.close()
+
+
+def test_trace_is_immutable(tmp_path):
+    engine = UroborosEngine(str(tmp_path / "memory.db"))
+    trace = engine.add_trace("immutable", {"place": "A"})
+    with pytest.raises(sqlite3.IntegrityError):
+        engine.db.conn.execute("UPDATE traces SET content='rewritten' WHERE trace_id=?", (trace.trace_id,))
+    engine.close()
+
+
+def test_conflicts_are_preserved_as_branches(tmp_path):
+    engine = UroborosEngine(str(tmp_path / "memory.db"))
+    engine.hcr.preserve("case-1", [("interpretation A", "source A"), ("interpretation B", "source B")])
+    assert len(engine.hcr.branches("case-1")) == 2
+    engine.close()
+tests/test_probing.py — Probing tests
+import random
+from uroboros.models import ProbeCandidate
+from uroboros.probing import choose_context
+
+
+def test_probe_logs_candidate_probabilities():
+    candidates = [
+        ProbeCandidate("low", 0.1, 0.1, 0.8, 0.2),
+        ProbeCandidate("high", 0.9, 0.4, 0.1, 0.1),
+    ]
+    decision, log = choose_context(candidates, rng=random.Random(7))
+    assert decision.context_id == "high"
+    assert 0 < decision.propensity < 1
+    assert abs(sum(x["propensity"] for x in log) - 1) < 1e-12
+
+
+def test_probe_rejects_empty_candidate_set():
+    import pytest
+    with pytest.raises(ValueError):
+        choose_context([])
+9. Полный набор тестов
+Запуск всех тестов:
+pytest -q
+В исходном наборе прототипа — 17 тестов. Ожидаемый результат при неизменённом окружении: успешное завершение всех тестов. При изменении кода или зависимостей результат необходимо перепроверить локально.
+10. Ограничения и следующие этапы
+Текущая реализация намеренно ограничена. Следующие компоненты не следует считать реализованными только потому, что они описаны архитектурно:
+- обучение глобальной модели и pair-specific коррекции с shrinkage;
+- полноценный ансамбль из 20 действительно различающихся участников;
+- калибровка вероятностей и отдельная калибровка неопределённости/квантилей;
+- генератор кандидатов ассоциаций с собственным вычислительным лимитом;
+- полный причинно-экспериментальный контур active probing;
+- benchmark против baseline retrieval, global-only, pair-specific и ablation-вариантов;
+- независимая внешняя проверка и оценка обобщения.
+Рекомендуемая последовательность развития:
+1. Зафиксировать формат данных, версии схемы и миграции БД.
+2. Добавить генерацию и ранжирование кандидатов с отдельным бюджетом.
+3. Реализовать и проверить иерархическую глобальную модель и pair-specific correction с shrinkage.
+4. Подключить ансамбль с документированной процедурой получения разнообразия.
+5. Добавить раздельные процедуры калибровки вероятностей и неопределённости.
+6. Создать синтетический и затем реальный контролируемый benchmark.
+7. Провести ablation-тесты и независимую оценку.
+11. Воспроизводимость и научная осторожность
+До тестирования необходимо зафиксировать h, уровни квантилей, пороги, min_local_ess, минимальную массу локальных весов, версию модели/ансамбля и правила отбора свидетельств. Настройка параметров должна выполняться только на обучающей или калибровочной выборке, но не на тестовой.
+
+Нужно сохранять исходные наблюдения, контекст, происхождение данных, версию политики и параметры запуска. Нельзя смешивать независимость источников с принадлежностью к разным меткам: два источника могут происходить из одной первичной записи. Нельзя интерпретировать B- как универсальное отрицание.
+
+Научная граница: UROBOROS исследует наблюдаемое поведение системы «оператор — модель — контекст — техническая среда». Архитектура не доказывает наличие сознания, субъективного опыта или биологической эквивалентности у языковой модели.
+12. Лицензия
+MIT License. Перед публичным включением документа в репозиторий проверьте, что корневой файл LICENSE соответствует выбранной лицензии и содержит необходимые сведения об авторстве.
+Автор проекта: Хальвита Евгений Александрович (HALVITA)
+Проект: UROBOROS 2.0
+Репозиторий: https://github.com/HALVITA20/UROBOROS
+Статус: экспериментальный модульный прототип.
+
+
+
+
+
+
+
+
