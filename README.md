@@ -94,6 +94,10 @@ UROBOROS 2.0 развивает исходную концепцию, объед�
 **Примечание:** UROBOROS 2.0 является развивающейся экспериментальной архитектурой. Заявленные механизмы и преимущества требуют дальнейшей реализации, сравнительного тестирования и независимой экспериментальной проверки.
 
 
+<img width="1536" height="1024" alt="ур1" src="https://github.com/user-attachments/assets/6d0b9e47-c8f9-42a0-a65f-57fc6aaa8b5e" />
+
+
+
 # UROBOROS_v1.0
 
 ## CONTEXTUAL ASSOCIATIVE MEMORY & BOUNDARY LEARNING ENGINE
@@ -1666,7 +1670,8 @@ REMEMBER WHERE IT FAILS.
 
 
 
-<img width="1536" height="1024" alt="2 0" src="https://github.com/user-attachments/assets/6a4c637c-726c-4a0e-a764-cd25bf45794f" />
+<img width="1672" height="941" alt="ур 2" src="https://github.com/user-attachments/assets/8f1ac13c-eedb-4c0d-9812-7ec4257b7a21" />
+
 
 
 
@@ -4953,6 +4958,11 @@ UROBOROS исследует наблюдаемое поведение систе
 **Репозиторий:** https://github.com/HALVITA20/UROBOROS
 
 **Статус:** экспериментальный модульный программный прототип.
+
+
+<img width="1672" height="941" alt="22222222" src="https://github.com/user-attachments/assets/11bcab97-1fce-4586-b5ba-a215569017a1" />
+
+
 
 ---
 
