@@ -1,0 +1,43 @@
+
+cff-version: 1.2.0
+message: >-
+  If you use UROBOROS in your research or software,
+  please cite this project.
+title: >-
+  UROBOROS — HALVITA: Архитектура контекстной
+  ассоциативной памяти и обучения границ применимости
+  для ИИ-агентов
+type: software
+authors:
+  - family-names: Хальвита
+    given-names: Евгений Александрович
+    affiliation: Independent Researcher
+    orcid: "https://orcid.org/0009-0007-5518-7801"
+    alias: HALVITA
+version: 1.0.0
+date-released: 2026-11-26
+abstract: >-
+  UROBOROS — экспериментальная архитектура адаптивной
+  внешней памяти для агентов на основе больших языковых
+  моделей. Проект исследует контекстно-зависимые
+  ассоциации, происхождение информации, свидетельства,
+  неопределённость и границы применимости воспоминаний.
+  Центральный архитектурный механизм — Memory Boundary
+  Learning (MBL). Проект включает модульную реализацию
+  на Python, базу данных, механизмы поиска и обработки
+  контекста, а также автоматизированные тесты.
+repository-code: "https://github.com/HALVITA20/UROBOROS"
+url: "https://github.com/HALVITA20/UROBOROS"
+keywords:
+  - UROBOROS
+  - HALVITA
+  - Искусственный интеллект
+  - Большие языковые модели
+  - ИИ-агенты
+  - Внешняя память
+  - Адаптивная память
+  - Ассоциативная память
+  - Контекстная память
+  - Memory Boundary Learning
+  - Python
+license: MIT
