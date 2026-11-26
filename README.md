@@ -2,7 +2,8 @@
 
 [![DOI](https://zenodo.org/badge/1472229003.svg)](https://doi.org/10.5281/zenodo.24541619)
 
-<img width="1983" height="793" alt="002" src="https://github.com/user-attachments/assets/de832885-d611-41c3-b9f7-86c0a51e8056" />
+<img width="1672" height="941" alt="уро" src="https://github.com/user-attachments/assets/0d5227df-94ef-4450-a11a-bc9b955ef213" />
+
 
 
 - [HALVITA-ARK](https://github.com/HALVITA20/halvita-ark) — исследовательское поле
