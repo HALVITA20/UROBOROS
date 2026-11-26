@@ -4960,7 +4960,8 @@ UROBOROS исследует наблюдаемое поведение систе
 **Статус:** экспериментальный модульный программный прототип.
 
 
-<img width="1672" height="941" alt="22222222" src="https://github.com/user-attachments/assets/11bcab97-1fce-4586-b5ba-a215569017a1" />
+<img width="1536" height="1024" alt="111112111" src="https://github.com/user-attachments/assets/d15ea861-c1e3-4f71-8064-358cf441e295" />
+
 
 
 
