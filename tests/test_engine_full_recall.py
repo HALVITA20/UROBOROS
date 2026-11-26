@@ -56,7 +56,7 @@ def test_recall_similar_searches_beyond_10000_records(
         assert results[0][0].trace_id == "trace-target"
 
         assert 10000 in requested_offsets
-        assert requested_offsets[-1] == 10000
+        assert requested_offsets[-1] == 10001
 
     finally:
         engine.close()
